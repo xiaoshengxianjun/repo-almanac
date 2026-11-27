@@ -1,0 +1,267 @@
+@media (max-width: 1180px) {
+  .shell {
+    grid-template-columns: 177px minmax(0, 1fr);
+  }
+  .sidebar {
+    padding-inline: 9px;
+  }
+  .workspace > main {
+    padding-block-end: 16px;
+  }
+  .flowWorkbench {
+    grid-template-columns: minmax(165px, 0.58fr) minmax(0, 1.42fr);
+  }
+  .traceCanvas {
+    padding-inline: 11px;
+  }
+  .traceHead {
+    padding-inline: 12px;
+  }
+  .traceNodes {
+    gap: 11px;
+  }
+  .traceNodes li + li:before {
+    width: 11px;
+    left: -11px;
+  }
+  .analysisGrid {
+    gap: 19px;
+  }
+  .flowRow {
+    padding-inline: 8px;
+  }
+  .traceNodes button {
+    padding-inline: 7px;
+  }
+}
+@media (max-width: 990px) {
+  .navBtn {
+    padding-inline: 8px;
+    gap: 8px;
+    white-space: nowrap;
+  }
+  .localFoot {
+    margin-inline: 3px;
+    padding-inline: 2px;
+    gap: 5px;
+    white-space: nowrap;
+  }
+
+  .shell {
+    grid-template-columns: 153px minmax(0, 1fr);
+  }
+  .brand {
+    gap: 8px;
+  }
+  .headBtns {
+    gap: 6px;
+  }
+  .searchBtn kbd {
+    margin: 0;
+  }
+  .searchBtn > span {
+    display: none;
+  }
+  .flowRow > svg {
+    margin-left: auto;
+  }
+  .flowWorkbench {
+    grid-template-columns: 172px minmax(0, 1fr);
+  }
+  .traceNodes code {
+    font-size: 10px;
+  }
+  .barRow {
+    grid-template-columns: 66px minmax(20px, 1fr) 61px;
+    gap: 7px;
+  }
+  .split {
+    grid-template-columns: 164px minmax(0, 1fr);
+  }
+  .detail {
+    padding: 15px;
+  }
+  .projectIdentity {
+    gap: 9px;
+  }
+}
+@media (max-width: 780px) {
+  .shell {
+    grid-template-columns: 128px minmax(0, 1fr);
+  }
+  .sidebar {
+    padding-inline: 5px;
+  }
+  .brandMark {
+    width: 30px;
+    height: 30px;
+  }
+  .brand b {
+    font-size: 17px;
+  }
+  .searchBtn kbd,
+  .projectTools i,
+  .projectTools .plain > span {
+    display: none;
+  }
+  .flowWorkbench,
+  .analysisGrid,
+  .split {
+    grid-template-columns: 1fr;
+  }
+  .flowIndex {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .flowIndex .flowRow > svg {
+    margin: 0;
+  }
+  .traceCanvas {
+    min-height: 107px;
+  }
+  .traceHead {
+    padding-top: 10px;
+  }
+  .brand small {
+    font-size: 10px;
+  }
+  .analysisGrid {
+    gap: 15px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .metric {
+    gap: 8px;
+    padding: 10px;
+  }
+  .metric > svg {
+    display: none;
+  }
+  .metrics {
+    gap: 7px;
+  }
+  .metricIcon {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+  }
+  .traceNodes button {
+    padding-inline: 7px;
+  }
+  .analysisGrid {
+    gap: 10px;
+  }
+}
+@media (max-width: 900px) {
+  .metric {
+    gap: 6px;
+    padding: 8px;
+    min-height: 65px;
+  }
+  .metricValue small {
+    font-size: 10px;
+  }
+  .metricIcon {
+    width: 24px;
+    height: 27px;
+  }
+  .metricIcon svg {
+    width: 16px;
+  }
+}
+@media (max-width: 780px) {
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .listPane {
+    position: static;
+    max-height: 35vh;
+  }
+  .projectHeader {
+    padding: 16px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .heroArt img {
+    transition: transform 0.36s ease-out;
+  }
+  .projectHeader:hover .heroArt img,
+  .projectHeader:focus-within .heroArt img {
+    transform: perspective(700px) rotateY(-5deg) translateY(-2px);
+  }
+  .heroScan:disabled svg {
+    animation: spin 1s linear infinite;
+  }
+  .metric,
+  .heroScan,
+  .welcome .primary,
+  .traceNodes button {
+    transition:
+      background-color 0.17s ease,
+      border-color 0.17s ease,
+      transform 0.17s ease,
+      box-shadow 0.17s ease;
+  }
+  .traceNodes li {
+    animation: trace-arrive 0.23s ease-out backwards;
+  }
+  .traceNodes li:nth-child(2) {
+    animation-delay: 45ms;
+  }
+  .traceNodes li:nth-child(3) {
+    animation-delay: 90ms;
+  }
+  .modal {
+    animation: panel-arrive 0.17s ease-out;
+  }
+  .scanning .welcomeArt img {
+    animation: scan-lift 2s ease-in-out infinite alternate;
+  }
+}
+@keyframes trace-arrive {
+  from {
+    opacity: 0;
+    transform: translateX(-7px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes panel-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes scan-lift {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-7px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .metric:hover,
+  .metric:focus-visible,
+  .traceNodes button:hover,
+  .traceNodes button:focus-visible,
+  .heroScan:not(:disabled):hover,
+  .welcome .primary:hover {
+    transform: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}

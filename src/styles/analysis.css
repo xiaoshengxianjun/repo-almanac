@@ -1,0 +1,348 @@
+.scanFoot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 20px !important;
+  padding: 5px 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.pageIntro {
+  margin: 2px 0 20px;
+}
+.pageIntro p,
+.detail > p,
+.modal > p {
+  color: var(--secondary);
+  font-size: 13px;
+  line-height: 1.8;
+}
+.pageIntro h1 {
+  margin-bottom: 6px;
+}
+.headingAction,
+.toolbar,
+.sourceBar {
+  justify-content: space-between;
+  gap: 12px;
+}
+.split {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.57fr) minmax(0, 1.45fr);
+  gap: 18px;
+  align-items: start;
+}
+.panel {
+  min-width: 0;
+  background: var(--sheet);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+.listPane {
+  padding: 10px;
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 180px);
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.listPane .searchField {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff;
+}
+.listPane .choice b,
+.listPane .choice small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.detail .sectionHead > div {
+  min-width: 0;
+}
+.detail .sectionHead h2 {
+  overflow-wrap: anywhere;
+}
+
+.searchField {
+  border: 1px solid #cbd0d5;
+  background: #fafbfc;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 9px;
+  border-radius: 4px;
+  color: var(--muted);
+}
+.searchField input {
+  width: 100%;
+  min-width: 0;
+  font-size: 12px;
+  border: 0;
+  background: none;
+  outline: none;
+}
+.searchField:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+.searchField.big input {
+  font-size: 15px;
+}
+.searchField.big {
+  padding: 12px;
+}
+.choice,
+.evidence,
+.searchResults button,
+.fileTable button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 11px;
+  text-align: left;
+}
+.choice {
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 10px 9px;
+  margin: 3px 0;
+  color: var(--secondary);
+}
+.choice:hover,
+.findingRow:hover,
+.step:hover,
+.evidence:hover,
+.readingLinks button:hover,
+.searchResults button:hover,
+.fileTable button:hover {
+  background: var(--wash);
+}
+.choice.selected {
+  background: var(--accent-wash);
+  border-left: 2px solid var(--accent);
+  padding-left: 8px;
+  color: var(--ink);
+}
+.choice > span,
+.step > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.choice b,
+.step b {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+}
+.choice small,
+.step small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 3px;
+}
+.choice .status {
+  margin: 0 0 5px;
+}
+.detail,
+.padded {
+  padding: 18px 21px;
+}
+.sectionHead {
+  padding: 0 0 14px;
+}
+.kicker {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font: 12px var(--mono);
+}
+.step {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+  gap: 12px;
+  padding: 10px 6px;
+  border-radius: 3px;
+}
+.step + .step:before {
+  content: '';
+  position: absolute;
+  top: -11px;
+  left: 18px;
+  height: 24px;
+  border-left: 1px solid #cbd1d6;
+}
+.stepNo {
+  z-index: 1;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-top: 3px;
+  border: 1px solid #b9c2c9;
+  background: #f4f6f8;
+  border-radius: 4px;
+  color: #4e606f;
+  font: 12px var(--mono);
+}
+.step svg {
+  align-self: center;
+  color: var(--muted);
+}
+.step b {
+  margin: 3px 0;
+  overflow-wrap: anywhere;
+}
+.step code,
+.evidence code {
+  font: 12px/1.45 var(--mono);
+  color: var(--secondary);
+  overflow-wrap: anywhere;
+}
+.crumbs {
+  gap: 4px;
+  flex-wrap: wrap;
+  color: var(--muted);
+}
+.crumbs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 4px;
+}
+.fileControls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.directoryPicker {
+  font: inherit;
+  font-size: 12px;
+  max-width: 145px;
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  background: var(--sheet);
+  border-radius: 4px;
+  color: var(--secondary);
+}
+.segment {
+  width: fit-content;
+  border: 1px solid #d2d6db;
+  border-radius: 4px;
+  background: #f3f4f5;
+  padding: 2px;
+  gap: 1px;
+  flex-shrink: 0;
+}
+.segment button {
+  border-radius: 2px;
+  font-size: 12px;
+  padding: 4px 8px;
+  color: var(--muted);
+}
+.segment button.on {
+  background: var(--sheet);
+  color: var(--ink);
+  font-weight: 650;
+  box-shadow: 0 0 0 1px #ced2d7;
+}
+.segment.filter {
+  margin: 0 0 15px;
+}
+.treemap {
+  position: relative;
+  height: 245px;
+  background: var(--wash);
+  margin: 15px 0 20px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.sectionHead h2 small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.fileTable button {
+  border-top: 1px solid var(--soft-line);
+  padding: 9px 4px;
+}
+.fileTable code {
+  font-size: 12px;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.fileTable b,
+.fileTable span {
+  min-width: 70px;
+  text-align: right;
+  color: var(--secondary);
+  font-size: 12px;
+}
+.fileTable b {
+  font: 12px var(--mono);
+}
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  margin: 16px 0 0;
+  font-size: 12px;
+}
+.versionBox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--wash);
+  padding: 12px;
+  border-block: 1px solid var(--line);
+  margin: 5px 0 12px;
+}
+.versionBox .status {
+  margin-left: auto;
+}
+.evidence {
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  margin-top: 5px;
+  font-size: 12px;
+}
+.evidence code {
+  margin-left: auto;
+  text-align: right;
+}
+.plan {
+  padding-left: 20px;
+  color: var(--secondary);
+  font-size: 13px;
+  line-height: 1.9;
+}
+.muted,
+.modal small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: #faf0e3;
+  color: #784d1f !important;
+  padding: 9px 11px;
+  border-left: 2px solid #b07739;
+  margin: 10px 0;
+  font-size: 12px;
+}
