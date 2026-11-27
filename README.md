@@ -52,5 +52,3 @@ npm start
 | `shared/` | 主进程和界面共同使用的 AI 证据格式，预览和发送均从这里生成 |
 | `tests/` | 文件扫描、源码定位、升级判断和报告内容的回归测试 |
 | `assets/`、`scripts/` | 品牌图标和桌面应用打包脚本 |
-
-完整范围和验收目标见[第一版需求与技术方案](docs/v1-product-and-technical-design.md)。
