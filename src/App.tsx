@@ -6,7 +6,6 @@ import { Flows } from './pages/Flows'
 import { Files } from './pages/Files'
 import { Upgrades } from './pages/Upgrades'
 import { AI } from './dialogs/AI'
-import { Lookup } from './dialogs/Lookup'
 import { Search } from './dialogs/Search'
 import { Settings } from './dialogs/Settings'
 import { Source } from './dialogs/Source'
@@ -33,8 +32,7 @@ export function App() {
     [read, setRead] = useState<any>(null),
     [message, setMessage] = useState(''),
     [darken, setDarken] = useState(false),
-    [ctx, setCtx] = useState<any>(null),
-    [querying, setQuerying] = useState(false)
+    [ctx, setCtx] = useState<any>(null)
   const id = useRef(''),
     timer = useRef<any>(null),
     openProjectButton = useRef<HTMLButtonElement>(null),
@@ -57,7 +55,6 @@ export function App() {
         setFinding('')
         setCtx(null)
         setDarken(false)
-        setQuerying(false)
         setMessage('')
       }
       setS(v.snapshot)
@@ -94,7 +91,7 @@ export function App() {
     }
   }
   function openFlow(f: any) {
-    setFlow(f.id)
+    setFlow('action:' + f.id)
     go('flows')
     setPopup('')
   }
@@ -112,26 +109,6 @@ export function App() {
     setPopup('ai')
   }
   const close = () => setPopup('')
-  async function lookup(names: string[]) {
-    if (!s) return
-    const projectId = s.id
-    close()
-    setQuerying(true)
-    try {
-      const res = await api.lookup(projectId, names)
-      if (id.current !== projectId) return
-      toast(
-        '发现 ' +
-          res.count +
-          ' 个候选更新' +
-          (res.errors.length ? '。查询失败：' + res.errors.join('，') : '。'),
-      )
-    } catch (error) {
-      if (id.current === projectId) toast(tidy(error))
-    } finally {
-      if (id.current === projectId) setQuerying(false)
-    }
-  }
   const current = tabs.find((t) => t[0] === tab)!
   return (
     <div className={'shell' + (macWindow ? ' macWindow' : '')}>
@@ -192,8 +169,8 @@ export function App() {
                 <button
                   type="button"
                   className="backToHome"
-                  title="关闭项目并返回首页"
-                  aria-label="关闭项目并返回首页"
+                  title="离开项目并返回首页"
+                  aria-label="离开项目并返回首页"
                   onClick={() =>
                     run(async () => {
                       await api.closeProject()
@@ -201,7 +178,7 @@ export function App() {
                     })
                   }
                 >
-                  <Icon name="back" size={18} />
+                  <Icon name="exit" size={18} />
                 </button>
               )}
               <Icon name="folder" size={16} />
@@ -313,7 +290,12 @@ export function App() {
                     key={s.id}
                     s={s}
                     go={go}
-                    openFlow={openFlow}
+                    chosen={flow}
+                    setChosen={setFlow}
+                    openTree={(key: string) => {
+                      setFlow(key)
+                      go('flows')
+                    }}
                     openFinding={openFinding}
                     source={source}
                     rescan={() => run(() => api.refresh(s.id))}
@@ -331,9 +313,7 @@ export function App() {
                     ai={ai}
                   />
                 )}
-                {tab === 'files' && (
-                  <Files key={s.id} s={s} source={source} toast={toast} />
-                )}
+                {tab === 'files' && <Files key={s.id} s={s} source={source} />}
                 {tab === 'upgrades' && (
                   <Upgrades
                     key={s.id}
@@ -342,10 +322,6 @@ export function App() {
                     setSelected={setFinding}
                     source={source}
                     ai={ai}
-                    lookup={() => {
-                      if (querying) toast('正在查询公共包元数据…')
-                      else setPopup('lookup')
-                    }}
                   />
                 )}
                 {tab !== 'overview' && (
@@ -382,7 +358,6 @@ export function App() {
           openFinding={openFinding}
         />
       )}
-      {popup === 'lookup' && s && <Lookup s={s} close={close} query={lookup} />}
       {popup === 'settings' && (
         <Settings
           close={close}

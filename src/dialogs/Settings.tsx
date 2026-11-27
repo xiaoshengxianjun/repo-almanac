@@ -55,14 +55,22 @@ export function Settings({ close, toast, hasIndex, clear }: any) {
           保存设置
         </Button>
       </div>
+      <hr />
+      <h3>隐私与本地数据</h3>
+      <p>
+        扫描在本机只读进行。索引保存在以下应用目录，导出报告时请选择项目外的位置。
+      </p>
+      {v.dataDirectory && <code className="longPath">{v.dataDirectory}</code>}
+      <p>
+        扫描后会自动向公共 npm
+        注册表发送可确认公开的依赖名称。版本比较在本机完成，24
+        小时内复用缓存，过期后再次查询时尝试刷新。私有源、本地引用和来源待确认的依赖仅在本机展示。
+      </p>
+      <p>AI 解释需单独确认，模型服务会收到预览中的证据。</p>
       {hasIndex && (
-        <>
-          <hr />
-          <h3>本地工作区</h3>
-          <div className="wrap">
-            <Button onClick={clear}>清除项目索引</Button>
-          </div>
-        </>
+        <div className="wrap">
+          <Button onClick={clear}>清除项目索引</Button>
+        </div>
       )}
     </Modal>
   )

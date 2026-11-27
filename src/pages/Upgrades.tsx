@@ -1,14 +1,7 @@
 import { useState } from 'react'
 import { Button, Empty, Icon, statuses } from '../components/ui'
 
-export function Upgrades({
-  s,
-  selected,
-  setSelected,
-  source,
-  lookup,
-  ai,
-}: any) {
+export function Upgrades({ s, selected, setSelected, source, ai }: any) {
   const [filter, setFilter] = useState('all')
   const findings = s.findings.filter(
       (f: any) => filter === 'all' || f.status === filter,
@@ -21,9 +14,6 @@ export function Upgrades({
           <h1>升级建议</h1>
           <p>结合锁定版本、运行环境和插件约束，核对升级前置条件。</p>
         </div>
-        <Button icon="refresh" onClick={lookup}>
-          查询公共版本
-        </Button>
       </div>
       <div className="segment filter">
         {['all', 'blocked', 'unknown', 'ready'].map((k) => (
@@ -106,7 +96,9 @@ export function Upgrades({
               <small className="muted">依据 · {f.source}</small>
             </>
           ) : (
-            <Empty>可查询公开包的候选版本，或检查项目的锁文件。</Empty>
+            <Empty>
+              此分类暂无升级建议。项目概览中可查看依赖版本和查询状态。
+            </Empty>
           )}
         </section>
       </div>

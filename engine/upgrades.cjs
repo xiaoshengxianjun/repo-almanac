@@ -2,26 +2,8 @@ const path = require('node:path').posix
 const semver = require('semver')
 const ts = require('@typescript/typescript6')
 const viteGuide = 'https://v5.vite.dev/guide/migration'
-const publicPackages = new Set([
-  'vite',
-  'vue',
-  'vue-router',
-  'react',
-  'react-dom',
-  'next',
-  'nuxt',
-  'express',
-  'typescript',
-  'webpack',
-  'rollup',
-  'axios',
-  'lodash',
-  'pinia',
-  'eslint',
-  '@vitejs/plugin-vue',
-  '@vitejs/plugin-react',
-  '@vue/cli-service',
-])
+const { projectLock, parent } = require('./dependency-locks.cjs')
+const { technologies, lookupPolicy, nuxtConfig } = require('./inventory.cjs')
 function json(text) {
   try {
     return JSON.parse(text)
@@ -60,22 +42,25 @@ function workerArrayLine(file, source) {
   visit(ast)
   return line
 }
-function analyzeUpgrades(texts, signals, onProblem = () => {}) {
+function analyzeUpgrades(
+  texts,
+  signals,
+  onProblem = () => {},
+  routing = new Map(),
+) {
   const tags = new Set(),
     projects = [],
     findings = []
-  const named = {
-    vue: 'Vue',
-    'vue-router': 'Vue Router',
-    react: 'React',
-    nuxt: 'Nuxt',
-    next: 'Next.js',
-    typescript: 'TypeScript',
-    vite: 'Vite',
-    express: 'Express',
-    webpack: 'webpack',
-    electron: 'Electron',
-  }
+  const manifests = new Map(
+    signals
+      .filter((f) => path.basename(f) === 'package.json')
+      .map((f) => [f, json(texts.get(f))]),
+  )
+  const locals = new Set(
+    [...manifests.values()].map((m) => m?.name).filter(Boolean),
+  )
+  const lockCache = new Map(),
+    signalSet = new Set(signals)
   const markers = {
     'go.mod': 'Go',
     'Cargo.toml': 'Rust',
@@ -88,54 +73,41 @@ function analyzeUpgrades(texts, signals, onProblem = () => {}) {
   }
   for (const f of signals)
     if (markers[path.basename(f)]) tags.add(markers[path.basename(f)])
-  for (const file of signals.filter(
-    (f) => path.basename(f) === 'package.json',
-  )) {
-    const manifest = json(texts.get(file))
+  for (const [file, manifest] of manifests) {
     if (!manifest) {
       onProblem('清单解析失败 ' + file)
       continue
     }
     const dir = dirOf(file),
-      deps = { ...manifest.dependencies, ...manifest.devDependencies }
-    for (const k of Object.keys(deps)) if (named[k]) tags.add(named[k])
-    if (Object.keys(deps).length) tags.add('JavaScript')
-    const candidates = []
-    let ancestor = dir
+      groups = new Map()
+    for (const [key, label] of [
+      ['peerDependencies', '配套'],
+      ['devDependencies', '开发'],
+      ['dependencies', '运行'],
+      ['optionalDependencies', '可选'],
+    ]) {
+      for (const [name, range] of Object.entries(manifest[key] || {})) {
+        if (typeof range === 'string') groups.set(name, { range, label })
+      }
+    }
+    const blocked = new Set()
+    let manager,
+      at = dir
     while (true) {
-      for (const n of [
-        'npm-shrinkwrap.json',
-        'package-lock.json',
-        'yarn.lock',
-        'pnpm-lock.yaml',
-        'bun.lock',
-        'bun.lockb',
-      ]) {
-        const p = path.join(ancestor, n)
-        if (texts.has(p) || signals.includes(p)) candidates.push(p)
-      }
-      if (candidates.length || !ancestor) break
-      ancestor = dirOf(ancestor)
+      for (const scope of routing.get(at) || []) blocked.add(scope)
+      const declaration = manifests.get(
+        path.join(at, 'package.json'),
+      )?.packageManager
+      if (!manager && typeof declaration === 'string')
+        manager = declaration.split('@')[0]
+      if (!at) break
+      at = parent(at)
     }
-    const npmLock = candidates.find((f) =>
-      /package-lock\.json$|npm-shrinkwrap\.json$/.test(f),
-    )
-    const conflict = candidates.some(
-      (f) => !/package-lock\.json$|npm-shrinkwrap\.json$/.test(f),
-    )
-    const lock = npmLock && !conflict ? json(texts.get(npmLock)) : null
-    function record(name) {
-      if (!lock) return null
-      if (!lock.packages) return lock.dependencies?.[name] || null
-      let scope = path.relative(dirOf(npmLock), dir)
-      while (true) {
-        const item = lock.packages[path.join(scope, 'node_modules', name)]
-        if (item) return item
-        if (!scope) break
-        scope = dirOf(scope)
-      }
-      return null
-    }
+    const lock = projectLock(dir, manager, texts, signalSet, lockCache)
+    const conflict = lock.conflict
+    for (const k of groups.keys())
+      if (technologies.has(k)) tags.add(technologies.get(k))
+    if (groups.size) tags.add('JavaScript')
     const env = []
     for (const [f, txt] of texts) {
       if (/(^|\/)\.github\/workflows\/[^/]+\.ya?ml$/.test(f)) {
@@ -156,18 +128,53 @@ function analyzeUpgrades(texts, signals, onProblem = () => {}) {
       )
         env.push({ kind: '开发机', value: txt.trim(), file: f, line: 1 })
     }
-    const resolved = Object.entries(deps).map(([name, range]) => {
-      const item = record(name)
+    if (typeof manifest.engines?.node === 'string')
+      env.push({ kind: '声明', value: manifest.engines.node, file, line: 1 })
+    const resolved = [...groups].map(([name, { range, label }]) => {
+      const item = lock.record(name, range)
+      const alternatives = (lock.alternatives || []).map((other) => ({
+        manager: other.manager,
+        file: other.file,
+        item: other.record(name, range),
+      }))
+      const lockEvidence = alternatives
+        .filter((x) => semver.valid(x.item?.version))
+        .map((x) => ({
+          manager: x.manager,
+          file: x.file,
+          version: x.item.version,
+        }))
+      const agreed =
+        lockEvidence.length &&
+        lockEvidence.length === alternatives.length &&
+        lockEvidence.every((e) => e.version === lockEvidence[0].version)
+      const origins = alternatives.map((x) => x.item).filter(Boolean)
+      const localReason =
+        (origins.length ? origins : [item])
+          .map((origin) => lookupPolicy(name, range, origin, locals, blocked))
+          .find(Boolean) || ''
+      const displayRange = /(?:[:/]|^git@)/.test(range)
+        ? range
+            .split(/[:/]/)[0]
+            .replace(/[^a-z-].*/i, '')
+            .slice(0, 20) + ' 引用'
+        : range
       const at = texts.get(file).indexOf(JSON.stringify(name))
       const line = at < 0 ? 1 : texts.get(file).slice(0, at).split('\n').length
       return {
         name,
-        range,
+        range: displayRange,
+        group: label,
+        technology: technologies.get(name) || null,
+        localReason,
         line,
-        version: item?.version || null,
+        version:
+          semver.valid(item?.version) ||
+          (agreed ? lockEvidence[0].version : null),
+        lockEvidence,
         peers: item?.peerDependencies || {},
         peerMeta: item?.peerDependenciesMeta || {},
-        lookup: publicPackages.has(name) && Boolean(semver.validRange(range)),
+        lookup: !localReason,
       }
     })
     const p = {
@@ -176,7 +183,9 @@ function analyzeUpgrades(texts, signals, onProblem = () => {}) {
       file,
       description: manifest.description || '',
       env,
-      lock: npmLock || null,
+      lock: lock.file,
+      manager: lock.manager || null,
+      config: nuxtConfig(dir, texts),
       worker: null,
       deps: resolved,
       conflict,
@@ -231,7 +240,7 @@ function analyzeUpgrades(texts, signals, onProblem = () => {}) {
           rollback: '恢复原配置和本次构建工具版本。',
         })
     }
-    if (Object.keys(deps).length && (!lock || conflict))
+    if (groups.size && (!lock.parsed || conflict))
       findings.push({
         id: file + ':lock',
         title: conflict ? '核对项目使用的包管理器' : '确认依赖锁定版本',
@@ -241,8 +250,8 @@ function analyzeUpgrades(texts, signals, onProblem = () => {}) {
         from: '声明范围',
         target: '锁定版本',
         reason: conflict
-          ? '发现其他包管理器的锁文件。当前 npm 分析器无法确认实际安装版本。'
-          : '缺少可解析的 npm 锁文件，声明范围无法证明安装版本。',
+          ? '发现多个包管理器或锁文件与声明不一致，需要核对构建所用的锁文件。'
+          : '缺少可解析的锁文件，声明范围无法证明锁定版本。',
         source: '本地清单',
         evidence: [evidence('依赖清单', file)],
         steps: [
@@ -269,6 +278,9 @@ function evaluate(
     unknown = [],
     refs = [evidence('声明范围', project.file, dep.line || 1)]
   if (project.lock) refs.push(evidence('解析锁定版本', project.lock))
+  for (const e of dep.lockEvidence || [])
+    refs.push(evidence(e.manager + ' 锁 · ' + e.version, e.file))
+  if (project.conflict) unknown.push('项目包管理器待核对')
   if (!dep.version) unknown.push('缺少当前锁定版本')
   const ci = project.env.filter((e) => e.kind === 'CI')
   if (engines.node) {
@@ -330,31 +342,62 @@ function evaluate(
     rollback: '恢复本次清单、锁文件、构建配置和对应的 CI 运行环境。',
   }
 }
+function compareMetadata(dep, meta) {
+  const stable = Object.keys(meta.versions || {}).filter(
+    (v) =>
+      semver.valid(v) && !semver.prerelease(v) && !meta.versions[v]?.deprecated,
+  )
+  const latest = semver.maxSatisfying(stable, '*'),
+    within = semver.maxSatisfying(stable, dep.range)
+  function gapFor(version) {
+    let gap = '锁定版本未知'
+    if (!latest) gap = '无稳定版本'
+    else if (semver.valid(version)) {
+      const diff = semver.major(latest) - semver.major(version)
+      if (semver.eq(version, latest)) gap = '已是最新'
+      else if (semver.gt(version, latest)) gap = '高于稳定版'
+      else if (diff) gap = '落后 ' + diff + ' 个主版本'
+      else if (semver.minor(latest) > semver.minor(version)) gap = '次版本更新'
+      else
+        gap =
+          semver.patch(latest) > semver.patch(version)
+            ? '补丁更新'
+            : '可转稳定版'
+    }
+    return gap
+  }
+  let gap = gapFor(dep.version)
+  if (latest && !dep.version && dep.lockEvidence?.length) {
+    gap = dep.lockEvidence
+      .map((e) => e.manager + ' · ' + gapFor(e.version))
+      .join(' / ')
+  }
+  return {
+    latest,
+    within,
+    tag: meta['dist-tags']?.latest || null,
+    checked: meta._checkedAt,
+    stale: !!meta._stale,
+    gap,
+  }
+}
 async function lookupProject(project, fetchMeta, allowed) {
   const results = [],
-    errors = []
-  for (const dep of project.deps.filter(
-    (d) => d.lookup && allowed.includes(d.name),
-  )) {
+    errors = [],
+    deps = []
+  for (const dep of project.deps) {
+    if (!dep.lookup || (allowed && !allowed.includes(dep.name))) {
+      deps.push(dep)
+      continue
+    }
     try {
-      const meta = await fetchMeta(dep.name)
-      const versions = Object.keys(meta.versions || {}).filter(
-        (v) =>
-          semver.valid(v) &&
-          !semver.prerelease(v) &&
-          !meta.versions[v].deprecated,
-      )
-      const latest = meta['dist-tags']?.latest,
-        within = semver.maxSatisfying(versions, dep.range)
-      for (const target of new Set(
-        [within, latest].filter(
-          (v) =>
-            semver.valid(v) &&
-            (!semver.valid(dep.version) || semver.gt(v, dep.version)),
-        ),
-      )) {
+      const meta = await fetchMeta(dep.name),
+        comparison = compareMetadata(dep, meta)
+      deps.push({ ...dep, comparison })
+      for (const target of new Set([comparison.within, comparison.latest])) {
+        if (!target || (dep.version && !semver.gt(target, dep.version)))
+          continue
         const doc = meta.versions[target]
-        if (!doc) continue
         results.push(
           evaluate(
             project,
@@ -371,8 +414,12 @@ async function lookupProject(project, fetchMeta, allowed) {
       }
     } catch (e) {
       errors.push(dep.name + ' · ' + e.message)
+      const comparison = dep.comparison?.latest
+        ? { ...dep.comparison, stale: true }
+        : { gap: '查询失败' }
+      deps.push({ ...dep, comparison })
     }
   }
-  return { results, errors }
+  return { results, errors, deps }
 }
-module.exports = { analyzeUpgrades, lookupProject, evaluate }
+module.exports = { analyzeUpgrades, lookupProject, evaluate, compareMetadata }

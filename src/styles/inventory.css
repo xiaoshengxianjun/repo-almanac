@@ -1,0 +1,264 @@
+.inventoryCard {
+  min-width: 0;
+  margin: 16px 0;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--sheet);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+.inventoryCard > .moduleHead {
+  padding: 16px 18px 12px;
+  margin: 0;
+  border-bottom: 1px solid var(--soft-line);
+}
+.inventoryCard select {
+  max-width: 52%;
+  font: 12px var(--mono);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 5px;
+  background: var(--sheet);
+  color: var(--ink);
+}
+.stackInventory,
+.inventoryTools,
+.inventoryFooter,
+.directoryPath,
+.directoryPath span,
+.directoryTools,
+.depSearch,
+.guideName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stackInventory {
+  flex-wrap: wrap;
+  padding: 14px 18px 8px;
+}
+.stackInventory button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  border-radius: 7px;
+  padding: 5px 9px;
+  background: #f1ecf5;
+  color: #4f395e;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.stackInventory button:hover,
+.guideRow:hover,
+.nuxtPlugins button:hover {
+  background: var(--wash);
+}
+.stackInventory small,
+.depTable small,
+.inventoryFooter,
+.nuxtPlugins button span,
+.guideRow small,
+.directoryPath {
+  color: var(--muted);
+  font-size: 11px;
+}
+.stackInventory .manifestLink {
+  align-items: center;
+  background: transparent;
+  color: var(--secondary);
+}
+.inventoryTools,
+.inventoryFooter {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding: 8px 18px 12px;
+}
+.depSearch {
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--muted);
+}
+.depSearch input {
+  border: none;
+  min-width: 0;
+  width: 130px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--ink);
+  background: transparent;
+}
+.depScroll {
+  overflow-x: auto;
+}
+.depTable {
+  width: 100%;
+  min-width: 660px;
+  border-spacing: 0;
+  text-align: left;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.depTable th {
+  font-weight: 500;
+  color: var(--muted);
+  background: #f8f6f9;
+  border-block: 1px solid var(--soft-line);
+  white-space: nowrap;
+}
+.depTable td,
+.depTable th {
+  padding: 8px 10px;
+}
+.depTable td {
+  border-bottom: 1px solid var(--soft-line);
+  overflow-wrap: anywhere;
+}
+.depTable tr > :first-child {
+  padding-left: 18px;
+}
+.depTable tr > :last-child {
+  padding-right: 18px;
+}
+.depTable td button {
+  text-align: left;
+  color: var(--ink);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.depTable td button:hover {
+  text-decoration: underline;
+}
+.depTable td .lockEvidence {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--secondary);
+}
+.depTable td small {
+  display: block;
+  margin-top: 2px;
+}
+.depTable td strong {
+  font-family: var(--mono);
+}
+.depGap {
+  display: inline-block;
+  padding: 2px 6px;
+  background: #f1eef4;
+  color: #5c5066;
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+.depGap.major {
+  background: #f9e9dd;
+  color: #8c4522;
+}
+.depGap.current {
+  background: #e6f2ec;
+  color: #2c6552;
+}
+.inventoryFooter {
+  min-height: 38px;
+  padding-block: 6px;
+}
+.directoryPath button {
+  color: var(--accent);
+  padding: 3px 6px;
+  border-radius: 5px;
+}
+.disclosure {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  border-radius: 7px;
+  padding: 4px 9px;
+  background: var(--wash);
+  color: var(--secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.disclosure:hover {
+  background: #ece6ef;
+  color: var(--ink);
+}
+.disclosure svg {
+  transform: rotate(90deg);
+  transition: transform 0.16s;
+}
+.disclosure[aria-expanded='true'] svg {
+  transform: rotate(-90deg);
+}
+.disclosure span:empty {
+  display: none;
+}
+.disclosure span {
+  font: 11px var(--mono);
+}
+@media (prefers-reduced-motion: reduce) {
+  .disclosure svg {
+    transition: none;
+  }
+}
+.nuxtPlugins {
+  border-top: 1px solid var(--soft-line);
+  padding: 9px 18px;
+  color: var(--secondary);
+  font-size: 12px;
+}
+.nuxtPlugins summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.nuxtPlugins button {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 5px 0;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+.inventoryNote {
+  color: var(--muted);
+  padding: 12px 18px;
+  font-size: 13px;
+}
+.directoryPath {
+  flex-wrap: wrap;
+  padding: 7px 14px;
+  background: #f8f6f9;
+}
+.directoryPath button:disabled {
+  color: var(--ink);
+}
+.guideRow {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(140px, 1.7fr) auto 14px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 18px;
+  text-align: left;
+  width: 100%;
+  border-top: 1px solid var(--soft-line);
+  font-size: 12px;
+  color: var(--secondary);
+}
+.guideName {
+  min-width: 0;
+  color: #654e77;
+}
+.guideName svg {
+  flex: none;
+}
+.guideName code {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.depTable tbody tr:hover {
+  background: #faf8fb;
+}
+.depTable tbody tr:first-child td:first-child {
+  box-shadow: inset 3px 0 #9a76ac;
+}

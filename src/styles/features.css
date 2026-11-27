@@ -1,0 +1,354 @@
+.featureBoard {
+  container-type: inline-size;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--sheet);
+  overflow: hidden;
+  box-shadow: var(--card-shadow);
+}
+.featureBoard > .moduleHead {
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--soft-line);
+}
+.featureBoard > .moduleHead h2 {
+  align-items: center;
+  gap: 9px;
+}
+.featureBoard > .moduleHead h2 > svg {
+  color: #77558c;
+}
+.featureBody {
+  display: grid;
+  grid-template-columns: minmax(210px, 30%) minmax(0, 1fr);
+}
+.featureNav {
+  min-width: 0;
+  background: #fbf9fc;
+  border-right: 1px solid var(--line);
+  padding: 10px;
+}
+.featureNav .searchField {
+  margin: 0 0 9px;
+  border-radius: 7px;
+  border-color: var(--line);
+}
+.featureTree {
+  overflow: auto;
+  max-height: clamp(310px, 62vh, 730px);
+  min-height: 180px;
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
+}
+.compact .featureTree {
+  max-height: 233px;
+}
+.featureTree ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.featureTree li > ul {
+  border-left: 1px solid #d9cfdf;
+  margin-left: 12px;
+  padding-left: 6px;
+}
+.treeRow {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  border-radius: 6px;
+  padding-right: 3px;
+  color: var(--secondary);
+}
+.treeRow:hover {
+  background: #f3eef5;
+}
+.treeRow.active {
+  color: #4d315b;
+  background: #eae1ef;
+  box-shadow: inset 2px 0 #94709f;
+}
+.treeToggle,
+.treeLeaf {
+  width: 24px;
+  flex: none;
+}
+.treeToggle {
+  height: 30px;
+  display: grid;
+  place-items: center;
+}
+.treeToggle svg,
+.disclosure svg {
+  transition: transform 0.16s;
+}
+.treeToggle[aria-expanded='true'] svg {
+  transform: rotate(90deg);
+}
+.treeSelect {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+  font-size: 12px;
+  padding: 6px 2px;
+  min-height: 32px;
+}
+.treeSelect svg {
+  color: #816d8b;
+  flex: none;
+}
+.treeSelect span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.treeSelect code,
+.featureCounts {
+  color: var(--muted);
+  font-size: 12px;
+}
+.featureDetail {
+  padding: 14px 18px 17px;
+  min-width: 0;
+  align-self: start;
+}
+.featureTrail,
+.featureTitle,
+.featureTitle > div,
+.chainHead,
+.featureTrail button,
+.relations > div,
+.relations button,
+.nodeOrigin button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.featureTrail {
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 11px;
+}
+.featureTrail button {
+  color: var(--muted);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.featureTitle {
+  justify-content: space-between;
+  gap: 10px;
+  margin: 4px 0;
+}
+.featureTitle > div {
+  flex-wrap: wrap;
+}
+.featureTitle h3 {
+  font-size: 20px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.featureTitle code {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--wash);
+  color: var(--secondary);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.featureTitle > .textBtn {
+  flex: none;
+}
+.nodeOrigin,
+.relations,
+.chainEmpty,
+.featureTree p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+.relations {
+  margin: 6px 0;
+}
+.relations summary {
+  cursor: pointer;
+}
+.relations > div {
+  justify-content: space-between;
+  border-bottom: 1px solid var(--soft-line);
+  gap: 10px;
+  padding: 3px 0;
+}
+.relations button,
+.nodeOrigin button {
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.relations button:first-child {
+  color: var(--accent);
+}
+.chainHead {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 7px;
+  font-size: 12px;
+}
+.chainHead span {
+  color: var(--muted);
+}
+.chainHead select {
+  max-width: 75%;
+  font: inherit;
+  color: var(--secondary);
+  border: 1px solid var(--line);
+  background: var(--sheet);
+  padding: 3px 5px;
+  border-radius: 6px;
+  text-overflow: ellipsis;
+}
+.featureSteps {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 7px;
+  display: grid;
+  gap: 6px;
+}
+.featureSteps li {
+  min-width: 0;
+}
+.featureSteps li button {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  border-radius: 8px;
+  padding: 9px;
+  text-align: left;
+  width: 100%;
+  background: #faf8fb;
+}
+.featureSteps li button:hover {
+  background: #f0eaf3;
+}
+.featureSteps li button > span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.featureSteps b,
+.featureSteps code {
+  overflow-wrap: anywhere;
+}
+.featureSteps b {
+  font-size: 13px;
+}
+.featureSteps code,
+.featureSteps small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.featureSteps .stepNo {
+  width: 22px;
+  height: 22px;
+  color: #734d7e;
+  background: #f5eff7;
+  border-color: #dfd4e5;
+}
+.compact .featureSteps {
+  grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
+  gap: 11px;
+}
+.compact .featureSteps li {
+  position: relative;
+}
+.compact .featureSteps li + li:before {
+  position: absolute;
+  content: '›';
+  color: #9b849e;
+  left: -9px;
+  top: 32%;
+}
+.compact .featureSteps li button {
+  height: 100%;
+  border: 1px solid var(--soft-line);
+}
+.compact .stepNo {
+  display: none;
+}
+.compact .featureSteps b,
+.compact .featureSteps code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chainEmpty {
+  padding-block: 12px;
+}
+.full .featureSteps li {
+  position: relative;
+}
+.full .featureSteps li + li:before {
+  content: '';
+  position: absolute;
+  left: 20px;
+  top: -9px;
+  height: 15px;
+  border-left: 1px solid #d8cadd;
+}
+.full .featureDetail {
+  min-height: 260px;
+}
+.featureDetail .notice {
+  margin: 6px 0;
+}
+@container (max-width:700px) {
+  .featureBody {
+    grid-template-columns: minmax(160px, 32%) minmax(0, 1fr);
+  }
+  .featureDetail {
+    padding: 10px;
+  }
+  .compact .featureSteps {
+    grid-template-columns: 1fr;
+  }
+  .compact .featureSteps li + li:before {
+    display: none;
+  }
+  .compact .featureSteps li button > span:last-child {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    flex-wrap: wrap;
+  }
+  .chainHead select {
+    max-width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .treeToggle svg,
+  .disclosure svg {
+    transition: none;
+  }
+}
+
+.compact
+  .featureSteps
+  li:is(
+    [data-type='storage'],
+    [data-type='state'],
+    [data-type='http'],
+    [data-type='server']
+  )
+  button {
+  background: #f1f7f5;
+  border-color: #cfe0da;
+}
+.compact
+  .featureSteps
+  li:is([data-type='event'], [data-type='lifecycle'])
+  button {
+  background: #fcf6f1;
+  border-color: #eddccd;
+}

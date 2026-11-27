@@ -113,7 +113,21 @@ function fileQuery(db, options = {}) {
         "), children AS (SELECT CASE WHEN instr(rest,'/')>0 THEN substr(rest,1,instr(rest,'/')-1) ELSE rest END name, instr(rest,'/')>0 folder,bytes,kind FROM entries) SELECT name,folder,SUM(bytes) bytes,COUNT(*) count,CASE WHEN folder THEN 'folder' ELSE MIN(kind) END kind FROM children GROUP BY name,folder ORDER BY bytes DESC,name",
     )
     .all(prefix, ...params)
-  return { ...total, rows, nodes }
+  let businessAncestor = folder
+  if (folder && !business) {
+    // '/' and '0' bound exactly this directory prefix in the indexed path column.
+    const hasBusiness = db.prepare(
+      'SELECT 1 FROM files WHERE business=1 AND path >= ? AND path < ? LIMIT 1',
+    )
+    while (
+      businessAncestor &&
+      !hasBusiness.get(businessAncestor + '/', businessAncestor + '0')
+    ) {
+      const slash = businessAncestor.lastIndexOf('/')
+      businessAncestor = slash < 0 ? '' : businessAncestor.slice(0, slash)
+    }
+  }
+  return { ...total, rows, nodes, businessAncestor }
 }
 function readSource(db, root, file, line = 1) {
   const row = db.prepare('SELECT * FROM files WHERE path=?').get(file)
@@ -147,7 +161,9 @@ function readSource(db, root, file, line = 1) {
         start: 1,
       }
     if (
-      ['.env', '.npmrc'].includes(path.basename(file)) ||
+      ['.env', '.npmrc', '.yarnrc', '.yarnrc.yml'].includes(
+        path.basename(file),
+      ) ||
       /(^|\/)\.env\.|\.pem$|\.key$/i.test(file)
     )
       return { notice: '凭据文件仅展示索引信息。', lines: [], start: 1 }

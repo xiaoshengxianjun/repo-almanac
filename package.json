@@ -1,7 +1,7 @@
 {
   "name": "repo-almanac",
   "productName": "项目志",
-  "version": "0.1.8",
+  "version": "0.0.1",
   "private": true,
   "description": "An evidence-based field guide to local codebases.",
   "repository": {
@@ -22,8 +22,10 @@
   "dependencies": {
     "@typescript/typescript6": "6.0.2",
     "@vue/compiler-sfc": "3.5.46",
+    "@yarnpkg/lockfile": "1.1.0",
     "ignore": "7.0.17",
-    "semver": "7.8.6"
+    "semver": "7.8.6",
+    "yaml": "2.9.1"
   },
   "devDependencies": {
     "@electron/packager": "^20.3.0",

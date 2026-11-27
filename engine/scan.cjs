@@ -3,9 +3,13 @@ const path = require('node:path')
 const ignore = require('ignore')
 const { createHash } = require('node:crypto')
 const { database, kindOf, overviewStats } = require('./storage.cjs')
+const { registryRoutes } = require('./inventory.cjs')
+const { buildFeatureMap } = require('./feature-map.cjs')
 const { analyzeCode } = require('./trace.cjs')
 const { analyzeUpgrades } = require('./upgrades.cjs')
+const { containsDirectory } = require('./project-paths.cjs')
 
+const inventoryVersion = 4
 const generated = new Set([
   '.git',
   'node_modules',
@@ -25,9 +29,17 @@ const generated = new Set([
 function scanProject(input, dbPath, onProgress = () => {}) {
   const root = fs.realpathSync(input)
   if (!fs.statSync(root).isDirectory()) throw new Error('请选择一个项目目录。')
+  if (dbPath !== ':memory:') {
+    dbPath = path.resolve(dbPath)
+    if (containsDirectory(root, path.dirname(dbPath)))
+      throw Error('索引必须保存在被分析项目之外。')
+    // Each scan owns a fresh index. Never open an existing file for creation.
+    fs.closeSync(fs.openSync(dbPath, 'wx', 0o600))
+  }
   const db = database(dbPath, true)
   const texts = new Map(),
     signals = [],
+    routing = new Map(),
     problems = []
   let fileCount = 0,
     bytes = 0,
@@ -77,9 +89,38 @@ function scanProject(input, dbPath, onProgress = () => {}) {
           problem('忽略规则读取失败 ' + rel)
         }
       }
+      // Read this project's manifests and lockfiles before a large source tree can exhaust the analysis budget.
+      if (!excluded) {
+        const priority = (ent) =>
+          ent.isDirectory()
+            ? 2
+            : /^(?:package(?:-lock)?\.json|npm-shrinkwrap\.json|yarn\.lock|pnpm-lock\.yaml|nuxt\.config\.)/.test(
+                  ent.name,
+                )
+              ? 0
+              : 1
+        list.sort((a, b) => priority(a) - priority(b))
+      }
       for (const ent of list) {
         const rp = rel ? rel + '/' + ent.name : ent.name
         const full = path.join(dir, ent.name)
+        const routeConfig = [
+          '.npmrc',
+          '.yarnrc',
+          '.yarnrc.yml',
+          'pnpm-workspace.yaml',
+        ].includes(ent.name)
+        if (routeConfig && !excluded) {
+          let raw = null
+          try {
+            if (ent.isFile() && fs.lstatSync(full).size <= 131072)
+              raw = fs.readFileSync(full, 'utf8')
+          } catch {}
+          routing.set(rel, [
+            ...(routing.get(rel) || []),
+            ...registryRoutes(ent.name, raw),
+          ])
+        }
         if (ent.isSymbolicLink()) {
           links++
           continue
@@ -113,7 +154,7 @@ function scanProject(input, dbPath, onProgress = () => {}) {
         if (off) continue
         const name = ent.name
         if (
-          /^(package\.json|go\.mod|Cargo\.toml|pom\.xml|composer\.json|pyproject\.toml|requirements\.txt|Gemfile|build\.gradle|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?)$/.test(
+          /^(package\.json|go\.mod|Cargo\.toml|pom\.xml|composer\.json|pyproject\.toml|requirements\.txt|Gemfile|build\.gradle|package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?)$/.test(
             name,
           )
         )
@@ -122,6 +163,8 @@ function scanProject(input, dbPath, onProgress = () => {}) {
           'package.json',
           'package-lock.json',
           'npm-shrinkwrap.json',
+          'pnpm-lock.yaml',
+          'yarn.lock',
           '.nvmrc',
           '.node-version',
           'tsconfig.json',
@@ -154,10 +197,20 @@ function scanProject(input, dbPath, onProgress = () => {}) {
     }
     walk(root, '', false, [])
     db.exec('COMMIT')
+    progress('依赖清单', true)
+    const upgrades = analyzeUpgrades(texts, signals, problem, routing)
     progress('业务流程', true)
-    const analysis = analyzeCode(texts, signals, problem)
-    progress('升级规则', true)
-    const upgrades = analyzeUpgrades(texts, signals, problem)
+    const analysis = analyzeCode(texts, signals, problem, upgrades.projects)
+    const conventionalEntries = db
+      .prepare(
+        "SELECT path FROM files WHERE business=1 AND (path IN ('index.html','index.js','index.ts','main.go','main.py','__main__.py','src/main.rs') OR path LIKE '%/__main__.py' OR path LIKE 'cmd/%/main.go') ORDER BY path",
+      )
+      .all()
+    const featureMap = buildFeatureMap(
+      analysis,
+      upgrades.projects,
+      conventionalEntries,
+    )
     const manifest =
       upgrades.projects.find((p) => p.dir === '') || upgrades.projects[0]
     const readme = [...texts.keys()].find((k) => /^readme(?:\.md)?$/i.test(k))
@@ -171,6 +224,7 @@ function scanProject(input, dbPath, onProgress = () => {}) {
         ?.slice(0, 160) ||
       ''
     const result = {
+      inventoryVersion,
       name: heading || manifest?.name || path.basename(root),
       slug: manifest?.name || path.basename(root),
       root,
@@ -184,6 +238,7 @@ function scanProject(input, dbPath, onProgress = () => {}) {
       problems,
       omitted,
       stats: overviewStats(db),
+      featureMap,
       ...analysis,
       ...upgrades,
     }
@@ -196,4 +251,4 @@ function scanProject(input, dbPath, onProgress = () => {}) {
     db.close()
   }
 }
-module.exports = { scanProject }
+module.exports = { scanProject, inventoryVersion }

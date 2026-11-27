@@ -1,13 +1,8 @@
-import { useMemo, useState } from 'react'
-import {
-  Icon,
-  Empty,
-  bytes,
-  fmt,
-  groups,
-  statuses,
-  types,
-} from '../components/ui'
+import { useState } from 'react'
+import { Icon, Empty, bytes, fmt, groups, statuses } from '../components/ui'
+import { DependencyInventory, orderStackTags } from './DependencyInventory'
+import { FeatureExplorer } from './FeatureExplorer'
+import { DirectoryGuide } from './DirectoryGuide'
 import archiveArt from '../art/archive.webp'
 
 interface Evidence {
@@ -16,139 +11,10 @@ interface Evidence {
   line: number
   label: string
 }
-interface Flow {
-  id: string
-  name: string
-  page: string
-  url: string
-  steps: Evidence[]
-  notes: string[]
-}
 interface Category {
   kind: string
   count: number
   bytes: number
-}
-
-function traceHighlights(flow: Flow) {
-  const steps = flow.steps
-  const action = steps.find((e) => e.type === 'event') || steps[0]
-  const request =
-    steps.find((e) => e.type === 'http') ||
-    steps.find((e) => e.type === 'handler')
-  return [...new Set([action, request, steps.at(-1)])].filter(
-    (e): e is Evidence => Boolean(e),
-  )
-}
-
-function WorkflowIndex({
-  flows,
-  go,
-  openFlow,
-  source,
-}: {
-  flows: Flow[]
-  go: (tab: string) => void
-  openFlow: (f: Flow) => void
-  source: (e: Evidence) => void
-}) {
-  const [selected, setSelected] = useState('')
-  const current = flows.find((f) => f.id === selected) || flows[0]
-  return (
-    <section className="flowBoard">
-      <header className="moduleHead">
-        <h2>
-          业务流程 <span>{fmt(flows.length)}</span>
-        </h2>
-        <button className="textBtn" onClick={() => go('flows')}>
-          全部流程 <Icon name="arrow" size={15} />
-        </button>
-      </header>
-      {current ? (
-        <div className="flowWorkbench">
-          <div className="flowIndex" aria-label="选择预览流程">
-            {flows.slice(0, 5).map((f) => (
-              <button
-                type="button"
-                key={f.id}
-                className={'flowRow ' + (f === current ? 'chosen' : '')}
-                aria-pressed={f === current}
-                onClick={() => setSelected(f.id)}
-              >
-                <span className="flowPin" aria-hidden="true" />
-                <span
-                  className="flowRowText"
-                  title={f.name + ' · ' + (f.url || f.page)}
-                >
-                  <b>{f.name}</b>
-                  <code>{f.url || f.page}</code>
-                </span>
-                <Icon name="chev" size={14} />
-              </button>
-            ))}
-          </div>
-          <div className="tracePreview">
-            <div className="traceHead">
-              <div>
-                <span className="traceLabel">
-                  <Icon name="flow" size={14} />
-                  调用链预览
-                </span>
-                <h3 title={current.name}>{current.name}</h3>
-              </div>
-              <button className="textBtn" onClick={() => openFlow(current)}>
-                完整 {current.steps.length} 步 <Icon name="arrow" size={14} />
-              </button>
-            </div>
-            <div className="traceCanvas">
-              <ol className="traceNodes" key={current.id}>
-                {traceHighlights(current).map((e) => (
-                  <li key={[e.type, e.file, e.line, e.label].join('|')}>
-                    <button
-                      onClick={() => source(e)}
-                      title={e.label + ' · ' + e.file + ':' + e.line}
-                    >
-                      <span className={'nodeIcon ' + e.type}>
-                        <Icon
-                          name={
-                            e.type === 'http'
-                              ? 'network'
-                              : e.type === 'server'
-                                ? 'terminal'
-                                : e.type === 'event'
-                                  ? 'flag'
-                                  : e.type === 'storage'
-                                    ? 'db'
-                                    : 'code'
-                          }
-                          size={17}
-                        />
-                      </span>
-                      <small>{types[e.type] || e.type}</small>
-                      <b>{e.label}</b>
-                      <code>
-                        {e.file.split('/').pop()}:{e.line}
-                      </code>
-                    </button>
-                  </li>
-                ))}
-              </ol>
-            </div>
-            {current.notes.length > 0 && (
-              <div className="traceNotes">
-                <Icon name="info" size={14} />
-                {current.notes.join('；')}
-              </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        <Empty>
-          此项目未识别到静态页面操作。可从项目阅读入口或文件清单查看源码。
-        </Empty>
-      )}
-    </section>
-  )
 }
 
 function Composition({
@@ -205,23 +71,15 @@ function Composition({
 export function Overview({
   s,
   go,
-  openFlow,
+  openTree,
+  chosen,
+  setChosen,
   openFinding,
   source,
   scanDetails,
   rescan,
   scanning,
 }: any) {
-  const flows = useMemo(() => {
-    const routes = new Map<string, number>()
-    for (const route of s.routes || [])
-      if (!routes.has(route.url)) routes.set(route.url, routes.size)
-    return [...s.flows].sort(
-      (a, b) =>
-        (routes.get(a.url) ?? Infinity) - (routes.get(b.url) ?? Infinity) ||
-        b.steps.length - a.steps.length,
-    )
-  }, [s.flows, s.routes])
   const timestamp = new Date(s.date)
   return (
     <div className="overview">
@@ -258,7 +116,7 @@ export function Overview({
             </button>
             {s.tags.length > 0 && (
               <div className="stackLine" aria-label="技术栈">
-                {s.tags.map((tag: string) => (
+                {orderStackTags(s.tags, s.projects).map((tag: string) => (
                   <span key={tag}>{tag}</span>
                 ))}
               </div>
@@ -292,12 +150,20 @@ export function Overview({
           </button>
         ))}
       </div>
-      <WorkflowIndex
-        flows={flows}
-        go={go}
-        openFlow={openFlow}
+      <FeatureExplorer
+        compact
+        s={s}
+        chosen={chosen}
+        setChosen={setChosen}
         source={source}
+        openFull={openTree}
       />
+      <DependencyInventory
+        projects={s.projects}
+        source={source}
+        legacy={!s.inventoryVersion}
+      />
+      <DirectoryGuide id={s.id} projects={s.projects} source={source} />
       <div className="analysisGrid">
         <div className="insightColumn">
           <section className="upgradePanel">

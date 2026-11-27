@@ -8,3 +8,18 @@ coverage/
 .env.*
 !.env.example
 .DS_Store
+
+# Local RepoAlmanac data and exported reports
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+/workspace/
+ai.json
+latest.json
+registry.json
+ai.json*.tmp
+latest.json*.tmp
+registry.json*.tmp
+.repo-almanac-*.tmp
+*-项目分析.md

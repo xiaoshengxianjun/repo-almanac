@@ -24,10 +24,12 @@ function routePath(a, b) {
       .replace(/\/$/, '') || '/'
   )
 }
-function analyzeCode(texts, signals, onProblem = () => {}) {
+function analyzeCode(texts, signals, onProblem = () => {}, projects = []) {
   const mods = new Map(),
     symbols = [],
     actions = [],
+    navigation = [],
+    componentUses = [],
     routes = [],
     servers = [],
     mounts = [],
@@ -35,6 +37,9 @@ function analyzeCode(texts, signals, onProblem = () => {}) {
     proxies = [],
     routerVars = new Set(),
     buildAliases = []
+  const scopes = [...projects].sort((a, b) => b.dir.length - a.dir.length)
+  const owner = (file) =>
+    scopes.find((p) => !p.dir || file.startsWith(p.dir + '/'))
   const configPaths = [...texts.keys()]
     .filter((p) => /(^|\/)(tsconfig|jsconfig)\.json$/.test(p))
     .sort((a, b) => b.length - a.length)
@@ -50,6 +55,17 @@ function analyzeCode(texts, signals, onProblem = () => {}) {
     if (spec.startsWith('.'))
       candidates.push(path.join(path.dirname(from), spec))
     else {
+      const project = owner(from)
+      if (project?.config && /^(?:~~|@@|~|@)\//.test(spec)) {
+        const [prefix, ...parts] = spec.split('/')
+        candidates.push(
+          path.join(
+            project.dir,
+            prefix.length === 1 ? project.config.srcDir : '',
+            ...parts,
+          ),
+        )
+      }
       for (const alias of buildAliases) {
         if (
           (!alias.scope || from.startsWith(alias.scope + '/')) &&
@@ -138,6 +154,9 @@ function analyzeCode(texts, signals, onProblem = () => {}) {
       defs: new Map(),
       values: new Map(),
       parts: [],
+      tags: new Map(),
+      heading: null,
+      componentNames: new Map(),
     }
     mods.set(file, m)
     for (const b of bodies) {
@@ -192,6 +211,54 @@ function analyzeCode(texts, signals, onProblem = () => {}) {
           const opts = ts.isCallExpression(st.expression)
             ? st.expression.arguments[0]
             : st.expression
+          for (const v of prop(opts, 'components')?.properties || []) {
+            if (ts.isShorthandPropertyAssignment(v))
+              m.componentNames.set(v.name.text, v.name.text)
+            else if (
+              ts.isPropertyAssignment(v) &&
+              ts.isIdentifier(v.initializer)
+            )
+              m.componentNames.set(
+                v.name.getText().replace(/['"]/g, ''),
+                v.initializer.text,
+              )
+          }
+          if (opts && ts.isObjectLiteralExpression(opts))
+            for (const member of opts.properties) {
+              const hook = member.name?.getText().replace(/^['"]|['"]$/g, '')
+              const description = {
+                asyncData: '加载页面数据',
+                fetch: '获取组件数据',
+                created: '创建组件',
+                mounted: '挂载组件',
+              }[hook]
+              if (
+                !['asyncData', 'fetch', 'created', 'mounted'].includes(hook) ||
+                !description
+              )
+                continue
+              if (
+                ['asyncData', 'fetch'].includes(hook) &&
+                !owner(file)?.deps.some((d) => d.name === 'nuxt') &&
+                !owner(file)?.config
+              )
+                continue
+              const fn = ts.isMethodDeclaration(member)
+                ? member
+                : ts.isPropertyAssignment(member)
+                  ? member.initializer
+                  : null
+              if (!fn || !ts.isFunctionLike(fn) || !fn.body) continue
+              define(hook, fn)
+              actions.push({
+                file,
+                name: description + ' · ' + hook,
+                handler: hook,
+                line: line(member),
+                expr: hook,
+                type: 'lifecycle',
+              })
+            }
           const methods = prop(opts, 'methods')
           for (const method of methods?.properties || [])
             if (ts.isMethodDeclaration(method))
@@ -201,6 +268,41 @@ function analyzeCode(texts, signals, onProblem = () => {}) {
     }
     if (template) {
       function visit(n) {
+        if (n.tag) {
+          if (
+            !m.heading &&
+            n.tag === 'h1' &&
+            n.children?.length &&
+            n.children.every((child) => child.type === 2)
+          ) {
+            const title = templateText(n).trim()
+            if (title)
+              m.heading = { title: title.slice(0, 65), line: n.loc.start.line }
+          }
+          if (!m.tags.has(n.tag)) m.tags.set(n.tag, n.loc.start.line)
+          if (
+            ['a', 'routerlink', 'nuxtlink'].includes(
+              n.tag.toLowerCase().replace(/-/g, ''),
+            )
+          ) {
+            const arg = n.tag === 'a' ? 'href' : 'to'
+            const attr = n.props.find(
+              (p) =>
+                p.name === arg || (p.name === 'bind' && p.arg?.content === arg),
+            )
+            const bound = attr?.exp?.content?.trim()
+            const dest =
+              attr?.value?.content ||
+              (bound && /^(['"])([^'"]+)\1$/.exec(bound)?.[2])
+            if (dest && /^\/(?!\/)/.test(dest))
+              navigation.push({
+                file,
+                line: attr.loc.start.line,
+                dest: dest.split(/[?#]/)[0],
+                label: '页面链接',
+              })
+          }
+        }
         for (const p of n.props || []) {
           if (
             p.name !== 'on' ||
@@ -399,6 +501,60 @@ function analyzeCode(texts, signals, onProblem = () => {}) {
           })
       })
     }
+  const normalizeTag = (name) => name.replace(/-/g, '').toLowerCase()
+  for (const m of mods.values()) {
+    if (!m.file.endsWith('.vue')) continue
+    const project = owner(m.file)
+    const nuxt = project?.config || project?.deps.some((d) => d.name === 'nuxt')
+    if (nuxt && !project.config?.pagesDisabled) {
+      const root = project.dir,
+        config = project.config,
+        src = config?.srcDir || ''
+      const candidates = src ? [src] : ['', 'app']
+      const base = candidates
+        .map((base) => path.join(root, base, config?.pagesDir || 'pages') + '/')
+        .find((base) => m.file.startsWith(base))
+      if (base && !routes.some((r) => r.component === m.file)) {
+        const rel = m.file.slice(base.length, -4)
+        const url = routePath(
+          '',
+          rel
+            .replace(/(^|\/)index$/, '')
+            .split('/')
+            .map((v, i, parts) => {
+              if (v === '_') return '*'
+              if (v.startsWith('_'))
+                return ':' + v.slice(1) + (i === parts.length - 1 ? '?' : '')
+              return v
+                .replace(/\[\.\.\.([^\]]+)\]/g, ':$1(.*)')
+                .replace(/\[([^\]]+)\]/g, ':$1')
+            })
+            .join('/'),
+        )
+        routes.push({
+          file: m.file,
+          line: m.heading?.line || 1,
+          component: m.file,
+          url,
+          title: url === '/' ? '首页' : m.heading?.title || url,
+          origin: project.config?.customRouting
+            ? 'Nuxt 页面约定 · 路由配置需核对'
+            : 'Nuxt 页面约定',
+        })
+      }
+    }
+    const bindings = new Map()
+    for (const [name, i] of m.imports)
+      if (i.name === 'default') bindings.set(normalizeTag(name), i.spec)
+    for (const [name, local] of m.componentNames)
+      if (m.imports.has(local))
+        bindings.set(normalizeTag(name), m.imports.get(local).spec)
+    for (const [tag, line] of m.tags) {
+      const to = localPath(m.file, bindings.get(normalizeTag(tag)))
+      if (to?.endsWith('.vue') && to !== m.file)
+        componentUses.push({ file: m.file, to, line, label: '模板组件 ' + tag })
+    }
+  }
   const endpoints = []
   function collect(id, prefix, port, seen) {
     if (seen.has(id)) return
@@ -416,7 +572,15 @@ function analyzeCode(texts, signals, onProblem = () => {}) {
       visited = new Set()
     if (route)
       steps.push(ev('route', route.title, route.file, route.line, route.url))
-    steps.push(ev('event', action.name, action.file, action.line, action.expr))
+    steps.push(
+      ev(
+        action.type || 'event',
+        action.name,
+        action.file,
+        action.line,
+        action.expr,
+      ),
+    )
     const rootFn = action.handler && func(mods.get(action.file), action.handler)
     if (!rootFn) reasons.add('事件处理函数未能静态定位')
     function follow(f, depth) {
@@ -431,6 +595,10 @@ function analyzeCode(texts, signals, onProblem = () => {}) {
         ev('handler', f.name, f.m.file, f.line(f.node), '处理函数定义'),
       )
       function visit(c) {
+        if (steps.length >= 48) {
+          reasons.add('调用链已达到追踪边界')
+          return
+        }
         if (c !== f.node.body && ts.isFunctionLike(c)) return
         if (ts.isCallExpression(c)) {
           const exp = c.expression.getText(),
@@ -439,18 +607,36 @@ function analyzeCode(texts, signals, onProblem = () => {}) {
             axios =
               f.m.imports.get(client)?.spec === 'axios' &&
               /\.(get|post|put|patch|delete)$/.test(exp)
-          if (exp === 'fetch' || axios) {
+          const nuxtAxios =
+            owner(f.m.file)?.config &&
+            /^(?:this\.)?\$axios\.\$?(get|post|put|patch|delete)$/.test(exp)
+          if (/^(?:this\.)?\$router\.(?:push|replace)$/.test(exp)) {
+            const dest = literal(arg) || literal(prop(arg, 'path'))
+            steps.push(
+              ev('navigation', dest || '动态跳转', f.m.file, f.line(c), exp),
+            )
+            if (dest && /^\/(?!\/)/.test(dest))
+              navigation.push({
+                from: action.file,
+                file: f.m.file,
+                line: f.line(c),
+                dest: dest.split(/[?#]/)[0],
+                label: '路由跳转',
+              })
+            else reasons.add('目标页面需在运行时确认')
+          } else if (exp === 'fetch' || axios || nuxtAxios) {
             const url = literal(arg)
             const opts = c.arguments[1],
-              method = axios
-                ? exp.split('.').pop().toUpperCase()
-                : literal(prop(opts, 'method'))?.toUpperCase() ||
-                  (!opts ||
-                  (ts.isObjectLiteralExpression(opts) &&
-                    !prop(opts, 'method') &&
-                    !opts.properties.some((p) => ts.isSpreadAssignment(p)))
-                    ? 'GET'
-                    : undefined)
+              method =
+                axios || nuxtAxios
+                  ? exp.split('.').pop().replace('$', '').toUpperCase()
+                  : literal(prop(opts, 'method'))?.toUpperCase() ||
+                    (!opts ||
+                    (ts.isObjectLiteralExpression(opts) &&
+                      !prop(opts, 'method') &&
+                      !opts.properties.some((p) => ts.isSpreadAssignment(p)))
+                      ? 'GET'
+                      : undefined)
             steps.push(
               ev(
                 'http',
@@ -509,8 +695,9 @@ function analyzeCode(texts, signals, onProblem = () => {}) {
                 url ? '服务端归属或处理路径待确认' : '请求地址在运行时生成',
               )
           } else if (
-            exp === 'localStorage.setItem' ||
-            exp === 'sessionStorage.setItem'
+            /^(?:localStorage|sessionStorage)\.(?:getItem|setItem|removeItem)$/.test(
+              exp,
+            )
           )
             steps.push(
               ev(
@@ -521,7 +708,25 @@ function analyzeCode(texts, signals, onProblem = () => {}) {
                 exp,
               ),
             )
-          else if (ts.isIdentifier(c.expression)) {
+          else if (/^(?:this\.)?\$store\.(?:dispatch|commit)$/.test(exp)) {
+            steps.push(
+              ev(
+                'state',
+                literal(arg) || '动态状态操作',
+                f.m.file,
+                f.line(c),
+                exp,
+              ),
+            )
+            reasons.add('状态处理器需结合 store 配置核对')
+          } else if (
+            ts.isPropertyAccessExpression(c.expression) &&
+            c.expression.expression.kind === ts.SyntaxKind.ThisKeyword &&
+            f.m.file.endsWith('.vue')
+          ) {
+            const target = f.m.defs.get(c.expression.name.text)
+            if (target) follow(target, depth + 1)
+          } else if (ts.isIdentifier(c.expression)) {
             const target = func(f.m, exp)
             if (target) follow(target, depth + 1)
           }
@@ -562,6 +767,67 @@ function analyzeCode(texts, signals, onProblem = () => {}) {
         if (to) imports.push({ from: m.file, to, line: line(st) })
       }
   }
-  return { flows, routes, symbols, entries, imports }
+  for (const p of projects) {
+    const manifest = JSON.parse(texts.get(p.file))
+    for (const [label, item] of [
+      ['主入口', manifest.main],
+      [
+        '启动脚本',
+        /^node\s+(?:\.\/)?([\w./-]+\.[cm]?[jt]s)(?:\s|$)/.exec(
+          String(manifest.scripts?.start || ''),
+        )?.[1],
+      ],
+      ...Object.entries(
+        typeof manifest.bin === 'string'
+          ? { CLI: manifest.bin }
+          : manifest.bin || {},
+      ),
+    ]) {
+      if (typeof item !== 'string') continue
+      const file = path.join(p.dir, item)
+      if (texts.has(file) && !entries.some((e) => e.file === file))
+        entries.push(ev('entry', label, file, 1, p.file + ' 声明的程序入口'))
+    }
+  }
+  const services = endpoints.map((e) => {
+    const handler = ts.isIdentifier(e.handler)
+      ? func(e.m, e.handler.text)
+      : null
+    const steps = [
+      ev(
+        'server',
+        e.method + ' ' + e.url,
+        e.m.file,
+        e.line,
+        'Express 路由注册',
+      ),
+    ]
+    if (handler)
+      steps.push(
+        ev(
+          'handler',
+          handler.name,
+          handler.m.file,
+          handler.line(handler.node),
+          '请求处理函数',
+        ),
+      )
+    return {
+      file: e.m.file,
+      line: e.line,
+      label: e.method + ' ' + e.url,
+      steps,
+    }
+  })
+  return {
+    flows,
+    routes,
+    symbols,
+    entries,
+    imports,
+    componentUses,
+    navigation,
+    services,
+  }
 }
 module.exports = { analyzeCode }

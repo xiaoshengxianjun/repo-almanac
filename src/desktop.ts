@@ -12,6 +12,7 @@ export interface ModelSettings {
   url: string
   model: string
   hasKey: boolean
+  dataDirectory: string
 }
 export interface FileRow {
   path: string
@@ -19,6 +20,7 @@ export interface FileRow {
   kind: string
 }
 export interface FileListing {
+  businessAncestor: string
   n: number
   bytes: number
   rows: FileRow[]
@@ -53,10 +55,6 @@ interface DesktopApi {
   ): Promise<ReturnType<typeof readSource>>
   report(id: string): Promise<boolean>
   copy(text: string): Promise<void>
-  lookup(
-    id: string,
-    packages: string[],
-  ): Promise<{ count: number; errors: string[] }>
   settings(): Promise<ModelSettings>
   configure(settings: {
     url: string

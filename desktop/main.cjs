@@ -18,10 +18,11 @@ const {
   readSnapshot,
   updateSnapshot,
 } = require('../engine/storage.cjs')
-const { readRegistryMetadata } = require('./registry.cjs')
-const { reportText } = require('./report.cjs')
+const { inventoryVersion } = require('../engine/scan.cjs')
+const { readRegistryMetadata, refreshVersions } = require('./registry.cjs')
+const { saveReport } = require('./report.cjs')
+const { assertSeparateWorkspace } = require('../engine/project-paths.cjs')
 const { validEndpoint, explain } = require('./model.cjs')
-const { lookupProject } = require('../engine/upgrades.cjs')
 
 let win, active, indexedId, job, base, progress, lookupRequest
 app.setName('RepoAlmanac')
@@ -34,9 +35,18 @@ function readJson(name, fallback) {
 }
 function saveJson(name, value) {
   const full = path.join(base, name)
-  const temp = full + '.tmp'
-  fs.writeFileSync(temp, JSON.stringify(value), { mode: 0o600 })
-  fs.renameSync(temp, full)
+  const temp = full + '.' + randomUUID() + '.tmp'
+  const fd = fs.openSync(temp, 'wx', 0o600)
+  try {
+    try {
+      fs.writeFileSync(fd, JSON.stringify(value))
+    } finally {
+      fs.closeSync(fd)
+    }
+    fs.renameSync(temp, full)
+  } finally {
+    fs.rmSync(temp, { force: true })
+  }
 }
 function emit(value) {
   if (win && !win.isDestroyed()) win.webContents.send('almanac:event', value)
@@ -107,7 +117,42 @@ function readIndex(id) {
     throw error
   }
 }
+function checkProjectLocation(root) {
+  assertSeparateWorkspace(root, app.getPath('userData'))
+  assertSeparateWorkspace(root, base)
+}
+async function checkVersions() {
+  const current = active
+  if (!current || current.result.inventoryVersion !== inventoryVersion) return
+  const request = new AbortController()
+  lookupRequest?.abort()
+  lookupRequest = request
+  try {
+    const cache = readJson('registry.json', {})
+    const updated = await refreshVersions(
+      current.result,
+      (name) => readRegistryMetadata(name, cache, request.signal),
+      request.signal,
+    )
+    if (request.signal.aborted || active !== current) return
+    if (Object.keys(cache).length) saveJson('registry.json', cache)
+    updateSnapshot(current.dbPath, updated)
+    current.result = updated
+    emit({ snapshot: updated })
+  } catch {
+    if (!request.signal.aborted && active === current)
+      emit({ error: '公共版本查询未完成，可以重新扫描重试。' })
+  } finally {
+    if (lookupRequest === request) lookupRequest = null
+  }
+}
+function resumeInventory() {
+  if (!active) return
+  if (active.result.inventoryVersion === inventoryVersion) void checkVersions()
+  else if (fs.existsSync(active.result.root)) start(active.result.root)
+}
 function openDirectory(root) {
+  checkProjectLocation(root)
   if (!active && indexedId) {
     const last = readJson('latest.json', {})
     if (
@@ -130,6 +175,7 @@ function openDirectory(root) {
       cancel()
       active = saved
       emit(state())
+      resumeInventory()
       return true
     }
   }
@@ -143,7 +189,7 @@ function start(root) {
     serviceName: 'RepoAlmanac Scanner',
   })
   let committed = false
-  job = { worker, dbPath, id }
+  job = { worker, dbPath, id, root }
   progress = { phase: '文件索引', fileCount: 0, bytes: 0 }
   emit({ progress })
   worker.once('spawn', () => {
@@ -170,6 +216,7 @@ function start(root) {
         progress = null
         job = null
         emit(state())
+        void checkVersions()
       } catch (e) {
         if (!committed) db?.close()
         emit({ error: e.message, progress: null })
@@ -206,7 +253,7 @@ const api = {
   },
   refresh: (id) => {
     const s = need(id).result
-    return start(s.root)
+    return openDirectory(s.root)
   },
   cancel,
   files: (id, options) => fileQuery(need(id).db, options),
@@ -219,55 +266,30 @@ const api = {
     const s = need(id).result
     const result = await dialog.showSaveDialog(win, {
       title: '导出 Markdown 报告',
-      defaultPath:
+      defaultPath: path.join(
+        app.getPath('downloads'),
         (s.slug || '项目').replace(/[^\p{L}\p{N}._-]+/gu, '-') + '-项目分析.md',
+      ),
       filters: [{ name: 'Markdown', extensions: ['md'] }],
     })
     if (result.canceled) return false
-    await fs.promises.writeFile(result.filePath, reportText(s), 'utf8')
+    need(id)
+    await saveReport(
+      s,
+      result.filePath,
+      [app.getPath('userData'), base, job?.root].filter(Boolean),
+    )
     return true
-  },
-  lookup: async (id, allowed) => {
-    const s = need(id).result
-    if (lookupRequest) throw Error('版本查询正在进行')
-    const request = new AbortController()
-    lookupRequest = request
-    const cache = readJson('registry.json', {}),
-      all = [],
-      issues = []
-    try {
-      for (const p of s.projects) {
-        const val = await lookupProject(
-          p,
-          (name) => readRegistryMetadata(name, cache, request.signal),
-          allowed,
-        )
-        all.push(...val.results)
-        issues.push(...val.errors)
-      }
-      request.signal.throwIfAborted()
-      need(id)
-      saveJson('registry.json', cache)
-      const prior = s.findings.filter((f) => !f.online)
-      const updated = {
-        ...s,
-        findings: [
-          ...prior,
-          ...all.map((f) => ({ ...f, online: true, id: 'registry:' + f.id })),
-        ],
-      }
-      updateSnapshot(active.dbPath, updated)
-      active.result = updated
-      emit({ snapshot: updated })
-      return { count: all.length, errors: issues }
-    } finally {
-      if (lookupRequest === request) lookupRequest = null
-    }
   },
   clear: clearIndex,
   settings: () => {
     const s = readJson('ai.json', {})
-    return { url: s.url || '', model: s.model || '', hasKey: !!s.secret }
+    return {
+      url: s.url || '',
+      model: s.model || '',
+      hasKey: !!s.secret,
+      dataDirectory: base,
+    }
   },
   configure: ({ url, model, key }) => {
     const endpoint = String(url || '')
@@ -338,6 +360,8 @@ else
           active = readIndex(indexedId)
           // Pre-0.1.3 installations may have an automatically created example index.
           if (active.result.isDemo === true) clearIndex()
+          else if (fs.existsSync(active.result.root))
+            checkProjectLocation(active.result.root)
         } catch {
           closeActive()
         }
@@ -382,6 +406,7 @@ else
       ]),
     )
     makeWindow()
+    resumeInventory()
     app.on('second-instance', () => {
       if (!win || win.isDestroyed()) return
       if (win.isMinimized()) win.restore()

@@ -3,31 +3,41 @@ import { init, use } from 'echarts/core'
 import { TreemapChart } from 'echarts/charts'
 import { TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
-import { bytes, Empty } from './ui'
+import type { FileListing } from '../desktop'
+import { bytes, fmt } from './ui'
+
 use([TreemapChart, TooltipComponent, CanvasRenderer])
-const colors = [
-  '#655394',
-  '#347578',
-  '#975731',
-  '#456a9b',
-  '#925672',
-  '#686493',
-  '#4c725e',
-  '#72536e',
-]
-export default function VolumeChart({ nodes, pick }: any) {
-  const root = useRef<HTMLDivElement>(null)
-  const selection = useRef(pick)
+export type VolumeTile = FileListing['nodes'][number] & {
+  color: string
+  other?: boolean
+}
+interface TileData {
+  name: string
+  value: number
+  record: VolumeTile
+}
+export default function VolumeChart({
+  nodes,
+  total,
+  pick,
+}: {
+  nodes: VolumeTile[]
+  total: number
+  pick: (n: VolumeTile) => void
+}) {
+  const root = useRef<HTMLDivElement>(null),
+    selection = useRef(pick),
+    chart = useRef<ReturnType<typeof init> | null>(null)
   selection.current = pick
-  const chart = useRef<ReturnType<typeof init> | null>(null)
   useEffect(() => {
     if (!root.current) return
     const instance = init(root.current)
     chart.current = instance
     const observer = new ResizeObserver(() => instance.resize())
     observer.observe(root.current)
-    instance.on('click', (e: any) => {
-      if (e.data?.record) selection.current(e.data.record)
+    instance.on('click', (e) => {
+      const tile = e.data as TileData | undefined
+      if (tile?.record) selection.current(tile.record)
     })
     return () => {
       observer.disconnect()
@@ -36,18 +46,30 @@ export default function VolumeChart({ nodes, pick }: any) {
     }
   }, [])
   useEffect(() => {
-    const data = nodes.map((record: any, i: number) => ({
-      name: record.name,
-      value: record.bytes,
-      itemStyle: { color: colors[i % colors.length] },
-      record,
-    }))
     chart.current?.setOption(
       {
         animation: false,
         tooltip: {
           renderMode: 'richText',
-          formatter: (e: any) => e.name + ' · ' + bytes(e.value),
+          confine: true,
+          formatter: ({ data }: { data: TileData }) => {
+            const n = data?.record
+            if (!n) return ''
+            const percent = total ? (100 * n.bytes) / total : 0
+            return (
+              n.name +
+              '\n' +
+              bytes(n.bytes) +
+              ' · ' +
+              (percent > 0 && percent < 0.1
+                ? '<0.1'
+                : percent.toLocaleString('zh-CN', {
+                    maximumFractionDigits: 1,
+                  })) +
+              '%' +
+              (n.folder || n.other ? ' · ' + fmt(n.count) + ' 个文件' : '')
+            )
+          },
         },
         series: [
           {
@@ -60,36 +82,54 @@ export default function VolumeChart({ nodes, pick }: any) {
             top: 0,
             bottom: 0,
             visibleMin: 0,
-            data,
             sort: 'desc',
+            data: nodes.map((record) => ({
+              name: record.name,
+              value: record.bytes,
+              record,
+              itemStyle: { color: record.color },
+            })),
             label: {
               show: true,
               position: 'insideTopLeft',
-              formatter: (e: any) =>
-                (e.data?.record?.folder ? '▸ ' : '') +
-                e.name +
+              formatter: ({ data }: { data: TileData }) =>
+                data.name +
+                (data.record.folder ? '/' : '') +
                 '\n' +
-                bytes(e.value),
+                bytes(data.value),
+              distance: 7,
               fontSize: 12,
-              color: '#ffffff',
-              lineHeight: 19,
+              fontWeight: 550,
+              color: '#352e38',
+              lineHeight: 18,
               overflow: 'truncate',
             },
-            itemStyle: { borderColor: '#ffffff', borderWidth: 1, gapWidth: 1 },
+            itemStyle: {
+              borderColor: '#fff',
+              borderWidth: 1,
+              borderRadius: 6,
+              gapWidth: 3,
+            },
+            emphasis: {
+              itemStyle: { borderColor: '#766479' },
+              label: { color: '#241b2a' },
+            },
           },
         ],
       },
       true,
     )
-  }, [nodes])
+  }, [nodes, total])
   return (
-    <div className="treemap">
-      <div ref={root} style={{ height: '100%', width: '100%' }} />
-      {!nodes.length && (
-        <div style={{ position: 'absolute', inset: 0 }}>
-          <Empty>当前范围没有非空文件</Empty>
-        </div>
-      )}
-    </div>
+    <div
+      className="volumeCanvas"
+      ref={root}
+      role="img"
+      aria-label={
+        '按体积显示的矩形树图，共 ' +
+        bytes(total) +
+        '。可通过目录选择器、体积排行或文件清单浏览。'
+      }
+    />
   )
 }

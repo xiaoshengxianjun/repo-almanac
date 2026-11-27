@@ -97,8 +97,7 @@
 }
 .choice,
 .evidence,
-.searchResults button,
-.fileTable button {
+.searchResults button {
   display: flex;
   align-items: center;
   width: 100%;
@@ -117,8 +116,7 @@
 .step:hover,
 .evidence:hover,
 .readingLinks button:hover,
-.searchResults button:hover,
-.fileTable button:hover {
+.searchResults button:hover {
   background: var(--wash);
 }
 .choice.selected {
@@ -260,38 +258,10 @@
 .segment.filter {
   margin: 0 0 15px;
 }
-.treemap {
-  position: relative;
-  height: 245px;
-  background: var(--wash);
-  margin: 15px 0 20px;
-  border-radius: 3px;
-  overflow: hidden;
-}
 .sectionHead h2 small {
   font-size: 12px;
   font-weight: 400;
   color: var(--muted);
-}
-.fileTable button {
-  border-top: 1px solid var(--soft-line);
-  padding: 9px 4px;
-}
-.fileTable code {
-  font-size: 12px;
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.fileTable b,
-.fileTable span {
-  min-width: 70px;
-  text-align: right;
-  color: var(--secondary);
-  font-size: 12px;
-}
-.fileTable b {
-  font: 12px var(--mono);
 }
 .pager {
   display: flex;

@@ -8,7 +8,6 @@ const methods = [
   'files',
   'source',
   'report',
-  'lookup',
   'settings',
   'configure',
   'explain',

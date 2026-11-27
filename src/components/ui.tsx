@@ -15,7 +15,7 @@ const paths: Record<string, string> = {
   arrow: 'M5 12h14 M14 7l5 5-5 5',
   chev: 'M9 5l7 7-7 7',
   close: 'M5 5l14 14 M19 5L5 19',
-  back: 'M19 12H5 M11 6l-6 6 6 6',
+  exit: 'M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5 M9 12h12 M16 7l5 5-5 5',
   file: 'M5 3h9l5 5v13H5z M14 3v6h5',
   disk: 'M4 7l2-4h12l2 4 1 10v3H3v-3z M3 14h18 M16 17h2',
   code: 'M8 6l-6 6 6 6 M16 6l6 6-6 6 M14 4l-4 16',
@@ -75,6 +75,9 @@ export const types: any = {
   http: '接口请求',
   server: '服务端',
   storage: '本地存储',
+  state: '状态操作',
+  navigation: '页面跳转',
+  lifecycle: '生命周期',
   symbol: '代码符号',
   config: '配置证据',
 }

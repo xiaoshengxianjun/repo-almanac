@@ -188,3 +188,59 @@ test('unsupported directories still yield a useful inventory and technology sign
   assert.equal(s.flows.length, 0)
   assert.equal(s.findings.length, 0)
 })
+
+test('distribution uses the same business scope for size, map, search and directory navigation', (t) => {
+  const dir = fixture(t),
+    root = path.join(dir, 'source')
+  const files = {
+    '.gitignore': 'skip.txt\n',
+    '.github/workflows/ci.yml': 'config',
+    'app/index.js': 'source',
+    'app/skip.txt': 'ignored',
+    'app/node_modules/pkg/index.js': 'dependency',
+    '.git/objects/blob': 'history',
+    'dist/index.js': 'generated',
+  }
+  for (const [file, contents] of Object.entries(files)) {
+    const full = path.join(root, file)
+    fs.mkdirSync(path.dirname(full), { recursive: true })
+    fs.writeFileSync(full, contents)
+  }
+  const index = path.join(dir, 'test.sqlite')
+  scanProject(root, index)
+  const db = database(index)
+  t.after(() => db.close())
+  const business = fileQuery(db, { business: true }),
+    all = fileQuery(db)
+  assert.equal(all.n, Object.keys(files).length)
+  assert.deepEqual(business.nodes.map((n) => n.name).sort(), [
+    '.github',
+    '.gitignore',
+    'app',
+  ])
+  assert.equal(
+    business.bytes,
+    business.rows.reduce((sum, r) => sum + r.bytes, 0),
+  )
+  assert.equal(
+    business.bytes,
+    business.nodes.reduce((sum, n) => sum + n.bytes, 0),
+  )
+  assert.deepEqual(
+    fileQuery(db, { business: true, query: 'index.js' }).rows.map(
+      (r) => r.path,
+    ),
+    ['app/index.js'],
+  )
+  assert.equal(fileQuery(db, { business: false, query: 'index.js' }).n, 3)
+  assert.equal(
+    fileQuery(db, { folder: 'app/node_modules/pkg', query: 'no-match' })
+      .businessAncestor,
+    'app',
+  )
+  assert.equal(fileQuery(db, { folder: '.git/objects' }).businessAncestor, '')
+  assert.equal(
+    fileQuery(db, { folder: '.github/workflows' }).businessAncestor,
+    '.github/workflows',
+  )
+})

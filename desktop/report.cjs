@@ -1,3 +1,8 @@
+const fs = require('node:fs')
+const path = require('node:path')
+const { randomUUID } = require('node:crypto')
+const { containsDirectory } = require('../engine/project-paths.cjs')
+
 const label = { blocked: '已知阻塞', ready: '可试升级', unknown: '信息不足' }
 
 function reportText(s) {
@@ -62,4 +67,32 @@ function reportText(s) {
   return lines.join('\n')
 }
 
-module.exports = { reportText }
+async function saveReport(snapshot, filename, otherProtectedDirs = []) {
+  const parent = fs.realpathSync.native(path.dirname(filename))
+  for (const dir of [snapshot.root, ...otherProtectedDirs]) {
+    // A previously indexed project may have been moved or removed.
+    if (
+      fs.statSync(dir, { throwIfNoEntry: false }) &&
+      containsDirectory(dir, parent)
+    )
+      throw Error('请将报告保存到项目和应用数据目录之外，例如“下载”文件夹。')
+  }
+  const target = path.join(parent, path.basename(filename))
+  const existing = fs.lstatSync(target, { throwIfNoEntry: false })
+  if (existing && (!existing.isFile() || existing.nlink > 1))
+    throw Error('请选择普通文件作为报告保存位置。')
+  const temp = path.join(parent, '.repo-almanac-' + randomUUID() + '.tmp')
+  const file = await fs.promises.open(temp, 'wx', 0o600)
+  try {
+    try {
+      await file.writeFile(reportText(snapshot), 'utf8')
+    } finally {
+      await file.close()
+    }
+    await fs.promises.rename(temp, target)
+  } finally {
+    await fs.promises.rm(temp, { force: true })
+  }
+}
+
+module.exports = { reportText, saveReport }

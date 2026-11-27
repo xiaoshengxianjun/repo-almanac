@@ -1,0 +1,378 @@
+.filesView {
+  container-type: inline-size;
+}
+.filesIntro,
+.filesToolbar,
+.fileScope,
+.filesCardHead,
+.volumeRanking header,
+.rankName,
+.fileKind,
+.volumeMore button,
+.fileNameButton {
+  display: flex;
+  align-items: center;
+}
+.filesIntro,
+.filesToolbar,
+.filesCardHead,
+.volumeRanking header {
+  justify-content: space-between;
+  gap: 16px;
+}
+.filesIntro {
+  margin: 2px 0 16px;
+}
+.filesIntro p {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--secondary);
+}
+.fileScope {
+  position: relative;
+  gap: 16px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--sheet);
+  cursor: pointer;
+}
+.fileScope strong,
+.fileScope small {
+  display: block;
+}
+.fileScope strong {
+  font-size: 12px;
+}
+.fileScope small,
+.fileRange,
+.volumeMeasure span,
+.volumeRanking small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.fileScope input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.fileScope i {
+  position: relative;
+  width: 32px;
+  height: 19px;
+  flex: none;
+  background: #908592;
+  border-radius: 12px;
+}
+.fileScope i::after {
+  position: absolute;
+  content: '';
+  top: 3px;
+  left: 3px;
+  height: 13px;
+  width: 13px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.15s;
+}
+.fileScope input:checked + i {
+  background: #785584;
+}
+.fileScope input:checked + i::after {
+  transform: translateX(13px);
+}
+.fileScope input:focus-visible + i {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+.filesToolbar {
+  margin: 0 0 12px;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+.filesToolbar .crumbs {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.filesToolbar .crumbs > svg:first-child {
+  color: #866b8b;
+}
+.filesToolbar .crumbs button[aria-current] {
+  color: var(--ink);
+  font-weight: 600;
+}
+.filesToolbar .fileControls {
+  flex-wrap: wrap;
+}
+.filesToolbar .directoryPicker,
+.filesToolbar .searchField {
+  border-radius: 7px;
+  background: var(--sheet);
+  border-color: var(--line);
+  min-height: 32px;
+}
+.filesToolbar .searchField {
+  padding: 5px 8px;
+  width: 180px;
+}
+.filesToolbar .searchField input {
+  min-width: 0;
+}
+.filesToolbar .searchField button {
+  display: flex;
+}
+.filesCard {
+  background: var(--sheet);
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: var(--card-shadow);
+  margin-bottom: 16px;
+}
+.filesCardHead {
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--soft-line);
+}
+.filesCardHead h2,
+.volumeRanking h3 {
+  margin: 0;
+}
+.volumeMeasure b {
+  font-variant-numeric: tabular-nums;
+  font-size: 17px;
+  letter-spacing: -0.5px;
+}
+.volumeLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(185px, 23%);
+  align-items: stretch;
+}
+.volumeCanvas {
+  height: 238px;
+  min-width: 0;
+  margin: 12px;
+}
+.volumeRanking {
+  min-width: 0;
+  padding: 12px 15px;
+  border-left: 1px solid var(--soft-line);
+  background: #faf8fa;
+}
+.volumeRanking h3 {
+  font-size: 13px;
+}
+.volumeRanking header {
+  gap: 4px;
+}
+.volumeRanking ol {
+  list-style: none;
+  padding: 0;
+  margin: 7px 0 0;
+}
+.volumeRanking li button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 7px;
+  width: 100%;
+  padding: 5px 3px;
+  text-align: left;
+  border-radius: 5px;
+}
+.volumeRanking li button:hover,
+.fileNameButton:hover,
+.volumeMore button:hover {
+  background: var(--wash);
+}
+.rankName {
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+}
+.rankName svg {
+  color: #746679;
+}
+.rankName b {
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.rankShare {
+  font: 11px var(--mono);
+  color: var(--secondary);
+}
+.rankTrack {
+  grid-column: 1/-1;
+  background: #eae4eb;
+  height: 3px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.rankTrack i {
+  display: block;
+  height: 100%;
+  min-width: 1px;
+}
+.volumeMore {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--soft-line);
+  max-height: 200px;
+  overflow: auto;
+}
+.volumeMore button {
+  gap: 5px;
+  padding: 4px 6px;
+  border-radius: 5px;
+  font-size: 12px;
+}
+.volumeMore small {
+  color: var(--muted);
+}
+.filesEmpty {
+  min-height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 16px;
+}
+.distributionTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  text-align: left;
+}
+.distributionTable th {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 550;
+  background: #faf8fa;
+  padding: 6px 17px;
+  border-bottom: 1px solid var(--soft-line);
+}
+.distributionTable td {
+  padding: 4px 17px;
+  border-bottom: 1px solid var(--soft-line);
+  font-size: 12px;
+}
+.distributionTable tbody tr:last-child td {
+  border: 0;
+}
+.distributionTable th:nth-child(2) {
+  width: 125px;
+}
+.distributionTable th:last-child {
+  width: 100px;
+  text-align: right;
+}
+.fileNameButton {
+  min-width: 0;
+  max-width: 100%;
+  text-align: left;
+  gap: 9px;
+  padding: 3px 0;
+}
+.fileNameButton > span:last-child {
+  min-width: 0;
+}
+.fileNameButton code,
+.fileNameButton strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fileNameButton strong {
+  font-size: 12px;
+  font-weight: 550;
+}
+.fileNameButton code {
+  color: var(--muted);
+  font-size: 11px;
+}
+.fileGlyph {
+  width: 28px;
+  height: 30px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  background: color-mix(in srgb, currentColor 9%, white);
+}
+.fileKind {
+  color: var(--secondary);
+  gap: 6px;
+  white-space: nowrap;
+}
+.fileKind i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+}
+.fileBytes {
+  font: 12px var(--mono);
+  color: var(--secondary);
+  text-align: right;
+  white-space: nowrap;
+}
+.filesCard .pager {
+  margin: 0;
+  padding: 10px 16px;
+  border-top: 1px solid var(--soft-line);
+}
+@container (max-width:740px) {
+  .filesIntro {
+    align-items: flex-start;
+  }
+  .fileScope {
+    gap: 8px;
+  }
+  .volumeLayout {
+    grid-template-columns: minmax(0, 1fr) 165px;
+  }
+  .volumeRanking {
+    padding: 10px;
+  }
+  .volumeCanvas {
+    margin: 8px;
+    height: 230px;
+  }
+  .distributionTable th:nth-child(2) {
+    width: 100px;
+  }
+  .distributionTable th:last-child {
+    width: 88px;
+  }
+  .distributionTable td,
+  .distributionTable th {
+    padding-inline: 10px;
+  }
+}
+@container (max-width:540px) {
+  .filesIntro {
+    flex-wrap: wrap;
+  }
+  .volumeLayout {
+    grid-template-columns: 1fr;
+  }
+  .volumeCanvas {
+    height: 185px;
+  }
+  .volumeRanking {
+    border-left: none;
+    border-top: 1px solid var(--soft-line);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fileScope i::after {
+    transition: none;
+  }
+}
